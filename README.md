@@ -26,6 +26,6 @@ python -m http.server 8000
 
 ## Music
 
-The 🔇 button plays `assets/music.mp3` (looped, gentle fade). That file is **not**
-committed — add your own, using a track you're allowed to publish. See
-[`assets/README.md`](assets/README.md) for licensing notes and free sources.
+The 🔇 button plays `assets/music.mp3` (a whale-sounds ambience loop, with a gentle
+fade in/out). To use a different track, drop in your own `assets/music.mp3` — or
+change `MUSIC_SRC` at the top of `script.js` to point at another file.
