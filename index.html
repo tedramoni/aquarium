@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eva &amp; Ted</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ocean" id="ocean">
+  <div class="rays"></div>
+  <div class="glow-blobs" id="glowBlobs"></div>
+  <div class="bg-jellies" id="bgJellies"></div>
+  <div class="creatures" id="creatures"></div>
+
+  <div class="angler-fish" id="anglerFish">
+    <div class="angler-body">
+      <svg viewBox="0 0 160 116" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="afGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#dffcff" stop-opacity="0.95"/>
+            <stop offset="35%" stop-color="#7fe6ff" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#7fe6ff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="afBody" cx="44%" cy="36%" r="68%">
+            <stop offset="0%" stop-color="#413a54"/>
+            <stop offset="55%" stop-color="#1a1626"/>
+            <stop offset="100%" stop-color="#08060f"/>
+          </radialGradient>
+        </defs>
+        <!-- tail + fins -->
+        <path class="af-fin" d="M126,60 C140,50 148,46 154,44 C149,56 149,66 154,78 C148,76 140,70 126,60 Z"/>
+        <path class="af-fin" d="M84,28 C100,12 122,17 130,36 C113,31 98,29 84,28 Z"/>
+        <path class="af-fin" d="M92,82 C100,99 117,96 123,83 C110,84 100,84 92,82 Z"/>
+        <!-- globular body -->
+        <path class="af-body" d="M130,60 C130,34 108,20 80,22 C50,24 30,40 30,60 C30,80 50,96 80,98 C108,100 130,86 130,60 Z"/>
+        <!-- gaping mouth cavity -->
+        <path class="af-mouth" d="M27,60 C40,51 56,48 71,50 L71,70 C56,72 40,69 27,60 Z"/>
+        <!-- interlocking needle fangs -->
+        <path class="af-fang" d="M34,51 L37,61 L41,51 L44,60 L48,50 L51,60 L55,50 L58,59 L62,50 L65,59 L69,50 L69,52 Z"/>
+        <path class="af-fang" d="M34,69 L37,60 L41,69 L44,61 L48,70 L51,61 L55,70 L58,62 L62,70 L65,62 L69,70 L69,68 Z"/>
+        <!-- eye -->
+        <circle class="af-eye" cx="70" cy="42" r="3.6"/>
+        <circle class="af-eye-glint" cx="71.4" cy="40.4" r="1.2"/>
+        <!-- illicium (rod) drooping in front of the mouth + glowing lure -->
+        <path class="af-rod" d="M86,26 C76,4 46,-1 24,18 C21,25 21,34 25,42"/>
+        <circle class="af-lure-glow" cx="25" cy="43" r="13"/>
+        <circle class="af-lure" cx="25" cy="43" r="3.6"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="octopus" id="octopus">
+    <div class="octopus-body">
+      <svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="octoBody" cx="42%" cy="26%" r="74%">
+            <stop offset="0%" stop-color="#ff8a6b"/>
+            <stop offset="52%" stop-color="#e8402f"/>
+            <stop offset="100%" stop-color="#9e1f2c"/>
+          </radialGradient>
+        </defs>
+        <!-- curling arms (behind the mantle) -->
+        <g class="octo-arms">
+          <path class="octo-arm" d="M42,60 C31,72 15,74 8,86 C3,94 7,101 13,98 C11,93 17,88 25,85 C37,80 49,71 51,59 Z"/>
+          <path class="octo-arm" d="M49,64 C43,83 32,95 27,112 C25,120 31,123 35,116 C38,107 46,96 55,81 C57,74 57,69 56,63 Z"/>
+          <path class="octo-arm" d="M56,66 C54,90 52,107 55,125 C56,131 61,131 62,125 C63,108 63,91 62,66 Z"/>
+          <path class="octo-arm" d="M64,66 C64,90 66,107 70,124 C72,130 77,128 76,121 C73,105 70,90 68,65 Z"/>
+          <path class="octo-arm" d="M71,64 C77,83 88,95 93,112 C95,120 89,123 85,116 C82,107 74,96 65,81 C63,74 64,69 65,63 Z"/>
+          <path class="octo-arm" d="M78,60 C89,72 105,74 112,86 C117,94 113,101 107,98 C109,93 103,88 95,85 C83,80 71,71 69,59 Z"/>
+        </g>
+        <!-- mantle (head) -->
+        <path class="octo-mantle" d="M60,12 C37,12 26,30 28,50 C29,66 43,74 60,74 C77,74 91,66 92,50 C94,30 83,12 60,12 Z"/>
+        <!-- big expressive eyes -->
+        <ellipse class="octo-eye-white" cx="48" cy="43" rx="9.5" ry="11"/>
+        <ellipse class="octo-eye-white" cx="72" cy="43" rx="9.5" ry="11"/>
+        <circle class="octo-pupil" cx="49.5" cy="45.5" r="5"/>
+        <circle class="octo-pupil" cx="70.5" cy="45.5" r="5"/>
+        <circle class="octo-glint" cx="51.3" cy="42.6" r="1.9"/>
+        <circle class="octo-glint" cx="72.3" cy="42.6" r="1.9"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="particles" id="particles"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <div class="cursor-glow" id="cursorGlow"></div>
+  <div class="motes" id="motes"></div>
+  <div class="trails" id="trails"></div>
+
+  <header class="title">
+    <h1>Eva <span>&amp;</span> Ted</h1>
+    <!-- EDIT the date below in script.js (TOGETHER_SINCE) -->
+    <p class="days">together for <b id="daysCount">…</b> days <span class="days-heart">💙</span></p>
+  </header>
+
+  <div class="jelly jelly--pink" id="jelly-eva"></div>
+  <div class="jelly jelly--blue" id="jelly-ted"></div>
+
+  <div class="heart" id="heart">
+    <div class="heart-core">
+      <div class="heart-rings"></div>
+      <div class="heart-shape"></div>
+    </div>
+    <!-- edit this message any time -->
+    <p class="heart-message">In the deepest dark, this is what still glows.</p>
+  </div>
+
+  <p class="hint" id="hint">✨ drag the jellyfish close together · tap the water for hearts</p>
+
+  <button class="sound-toggle" id="soundToggle" type="button" aria-label="Toggle ambient sound">🔇</button>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
