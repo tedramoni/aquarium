@@ -9,6 +9,3 @@ desktop.ini
 # dependencies / build (none needed for this static site, kept for safety)
 node_modules/
 *.log
-
-# local audio — too large for GitHub (>100MB) and licensing varies; add your own
-assets/music.mp3
