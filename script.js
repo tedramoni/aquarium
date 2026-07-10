@@ -160,58 +160,73 @@ class Angler {
   }
 }
 
-// A little octopus that hovers and drifts, arms gently swaying (non-interactive).
+// A little octopus that swims by jet propulsion: it darts in a burst (mantle
+// first, arms trailing) then coasts to a near stop before the next jet.
 class Octopus {
   constructor(el) {
     this.el = el;
+    this.body = el.querySelector('.octopus-body');
     this.x = bounds.width * 0.3;
     this.y = bounds.height * 0.6;
-    this.vx = 0.2;
+    this.vx = 0;
     this.vy = 0;
-    this.wobble = rand(0, Math.PI * 2);
-    this.target = { x: this.x, y: this.y };
-    this.nextTargetAt = 0;
-    this.pickTarget();
+    this.angle = 0;      // display rotation (deg); 0 = arms hanging down
+    this.nextJetAt = 0;
   }
 
-  pickTarget() {
-    const m = 80;
-    this.target.x = rand(m, bounds.width - m);
-    this.target.y = rand(bounds.height * 0.32, bounds.height * 0.85);
-    this.nextTargetAt = performance.now() + rand(8000, 15000);
+  jet() {
+    // aim at a fresh point, biased inward so it doesn't hug the edges
+    const mx = 110;
+    const my = 90;
+    const tx = rand(mx, bounds.width - mx);
+    const ty = rand(bounds.height * 0.18, bounds.height * 0.82);
+    const dx = tx - this.x;
+    const dy = ty - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const power = rand(4.5, 6.5);
+    this.vx += (dx / d) * power;
+    this.vy += (dy / d) * power;
+    this.nextJetAt = performance.now() + rand(1700, 3800);
+
+    // fire the streamline squash animation (retrigger by reflow)
+    if (this.body) {
+      this.body.classList.remove('jet');
+      void this.body.offsetWidth;
+      this.body.classList.add('jet');
+    }
   }
 
   update() {
-    if (performance.now() > this.nextTargetAt) this.pickTarget();
-    const dx = this.target.x - this.x;
-    const dy = this.target.y - this.y;
-    const dist = Math.hypot(dx, dy) || 1;
-    if (dist < 40) this.pickTarget();
+    if (performance.now() > this.nextJetAt) this.jet();
 
-    this.vx += (dx / dist) * 0.004;
-    this.vy += (dy / dist) * 0.004;
-    this.wobble += 0.008;
-    this.vy += Math.sin(this.wobble) * 0.006; // gentle hover
-    this.vx *= 0.985;
-    this.vy *= 0.985;
-
-    const sp = Math.hypot(this.vx, this.vy);
-    const max = 0.3;
-    if (sp > max) {
-      this.vx = (this.vx / sp) * max;
-      this.vy = (this.vy / sp) * max;
-    }
-
+    // glide: firm drag so each burst darts, then coasts to a rest before the next jet
+    this.vx *= 0.94;
+    this.vy *= 0.94;
     this.x += this.vx;
     this.y += this.vy;
+
+    // soft walls: bounce gently off the edges
+    const m = 30;
+    if (this.x < m) { this.x = m; this.vx = Math.abs(this.vx) * 0.5; }
+    else if (this.x > bounds.width - m) { this.x = bounds.width - m; this.vx = -Math.abs(this.vx) * 0.5; }
+    if (this.y < m) { this.y = m; this.vy = Math.abs(this.vy) * 0.5; }
+    else if (this.y > bounds.height - m) { this.y = bounds.height - m; this.vy = -Math.abs(this.vy) * 0.5; }
+
+    // orient mantle-first while moving (arms trail); right itself when resting
+    const sp = Math.hypot(this.vx, this.vy);
+    let desired = 0;
+    if (sp > 0.35) desired = (Math.atan2(this.vy, this.vx) * 180) / Math.PI + 90;
+    let diff = ((desired - this.angle + 540) % 360) - 180;
+    this.angle += diff * 0.12;
+
     this.render();
   }
 
   render() {
     const w = this.el.offsetWidth;
     const h = this.el.offsetHeight;
-    const sway = Math.sin(this.wobble) * 4;
-    this.el.style.transform = `translate(${this.x - w / 2}px, ${this.y - h / 2}px) rotate(${sway.toFixed(1)}deg)`;
+    this.el.style.transform =
+      `translate(${(this.x - w / 2).toFixed(1)}px, ${(this.y - h / 2).toFixed(1)}px) rotate(${this.angle.toFixed(1)}deg)`;
   }
 }
 

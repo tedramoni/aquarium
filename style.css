@@ -531,9 +531,9 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  width: clamp(96px, 13vw, 158px);
+  width: clamp(180px, 26vw, 320px);
   z-index: 2;
-  opacity: 0.92;
+  opacity: 0.9;
   pointer-events: none;
   will-change: transform;
 }
@@ -621,7 +621,7 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  width: clamp(44px, 5.6vw, 70px);
+  width: clamp(46px, 5.8vw, 74px);
   z-index: 2;
   opacity: 0.9;
   pointer-events: none;
@@ -630,8 +630,20 @@ html, body {
 
 .octopus-body {
   width: 100%;
-  filter: drop-shadow(0 0 8px rgba(232, 64, 47, 0.45));
-  animation: octo-bob 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 7px rgba(200, 40, 34, 0.4));
+  transform-origin: center;
+}
+
+/* one-shot streamline pulse fired on each jet */
+.octopus-body.jet {
+  animation: octo-jet 0.6s ease-out;
+}
+
+@keyframes octo-jet {
+  0%   { transform: scale(1, 1); }
+  22%  { transform: scale(1.16, 0.78); }
+  55%  { transform: scale(0.88, 1.16); }
+  100% { transform: scale(1, 1); }
 }
 
 .octopus-body svg {
@@ -641,44 +653,51 @@ html, body {
   overflow: visible;
 }
 
-@keyframes octo-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(5px); }
-}
-
 .octo-mantle {
   fill: url(#octoBody);
-  stroke: rgba(255, 180, 150, 0.35);
+  stroke: rgba(150, 30, 40, 0.4);
   stroke-width: 1;
-}
-
-.octo-arms {
   transform-box: fill-box;
-  transform-origin: top center;
-  animation: octo-arms-sway 3.4s ease-in-out infinite;
+  transform-origin: center;
+  animation: octo-breathe 3.6s ease-in-out infinite;
 }
 
-@keyframes octo-arms-sway {
-  0%, 100% { transform: rotate(-2.5deg) scaleY(0.98); }
-  50%      { transform: rotate(2.5deg) scaleY(1.02); }
+@keyframes octo-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.05, 0.95); }
+}
+
+.octo-sheen {
+  fill: rgba(255, 180, 150, 0.28);
+}
+
+.octo-fold {
+  fill: none;
+  stroke: rgba(120, 20, 30, 0.35);
+  stroke-width: 1.4;
+  stroke-linecap: round;
 }
 
 .octo-arm {
-  fill: #d3302e;
-  stroke: rgba(120, 20, 35, 0.4);
+  fill: #c82e2c;
+  stroke: rgba(110, 18, 32, 0.4);
   stroke-width: 0.5;
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: octo-arm-wave 2.8s ease-in-out infinite alternate;
 }
 
-.octo-eye-white {
-  fill: #fff8f2;
-}
+/* each arm undulates on its own tempo so the cluster is always alive */
+.octo-arm:nth-child(1) { animation-duration: 2.4s; animation-delay: -0.3s; }
+.octo-arm:nth-child(2) { animation-duration: 3.1s; animation-delay: -1.1s; }
+.octo-arm:nth-child(3) { animation-duration: 2.7s; animation-delay: -0.6s; }
+.octo-arm:nth-child(4) { animation-duration: 3.3s; animation-delay: -1.6s; }
+.octo-arm:nth-child(5) { animation-duration: 2.5s; animation-delay: -0.9s; }
+.octo-arm:nth-child(6) { animation-duration: 3.0s; animation-delay: -0.2s; }
 
-.octo-pupil {
-  fill: #1b0f16;
-}
-
-.octo-glint {
-  fill: #ffffff;
+@keyframes octo-arm-wave {
+  from { transform: rotate(-6deg); }
+  to   { transform: rotate(6deg); }
 }
 
 /* --- interactivity + ambience --- */
