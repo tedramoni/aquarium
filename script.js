@@ -1,18 +1,47 @@
 const ocean = document.getElementById('ocean');
 const hint = document.getElementById('hint');
 const heartEl = document.getElementById('heart');
+const heartMsgEl = heartEl.querySelector('.heart-message');
 
 // EDIT THIS: the day you two got together — new Date(year, monthIndex, day)
 // monthIndex is 0-based (0 = January, 6 = July, 11 = December)
 const TOGETHER_SINCE = new Date(2026, 5, 18);
 
+// EDIT THESE: the lines shown when Eva & Ted meet. The first one is always shown
+// on the first meeting; the rest rotate in a shuffled order. "{days}" is
+// replaced with the number of days together.
+const MESSAGES = [
+  'In the deepest dark, this is what still glows.',
+  'Two lights, one ocean.',
+  'Of all the currents, mine always drifts back to you.',
+  'You make the abyss feel like home.',
+  'Glowing a little brighter because you\'re here.',
+  'Every tide brings me back to you.',
+  '{days} days, and I\'d still cross any ocean to find you.',
+];
+
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 let trails = null;
+let daysTogether = 0;
 const pointer = { x: -999, y: -999, active: false, lastMove: 0 };
+
+// Element sizes only change on resize, so cache them per "size epoch" instead of
+// reading offsetWidth/offsetHeight (a forced layout) every animation frame.
+let sizeEpoch = 0;
+function cachedSize(obj) {
+  if (obj._epoch !== sizeEpoch) {
+    obj._w = obj.el.offsetWidth;
+    obj._h = obj.el.offsetHeight;
+    obj._epoch = sizeEpoch;
+  }
+}
 
 const bounds = { width: 0, height: 0 };
 function updateBounds() {
   bounds.width = ocean.clientWidth;
   bounds.height = ocean.clientHeight;
+  sizeEpoch++;
 }
 window.addEventListener('resize', updateBounds);
 updateBounds();
@@ -25,6 +54,20 @@ function clamp(v, min, max) {
 }
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+let msgOrder = [];
+let firstUnion = true;
+function nextMessage() {
+  let msg;
+  if (firstUnion) {
+    firstUnion = false;
+    msg = MESSAGES[0];
+  } else {
+    if (!msgOrder.length) msgOrder = MESSAGES.slice(1).sort(() => Math.random() - 0.5);
+    msg = msgOrder.pop() || MESSAGES[0];
+  }
+  return msg.replace('{days}', daysTogether.toLocaleString());
 }
 
 function createParticles(count) {
@@ -98,6 +141,9 @@ function createCreatures(fishCount) {
   for (let i = 0; i < fishCount; i++) spawn(Math.random() < 0.5);
 }
 
+// All update(k) methods take k = elapsed time in 60fps frames, so motion runs at
+// the same speed on 60Hz and 120Hz screens.
+
 // One anglerfish that slowly wanders the background (non-interactive).
 class Angler {
   constructor(el) {
@@ -121,19 +167,20 @@ class Angler {
     this.nextTargetAt = performance.now() + rand(7000, 13000);
   }
 
-  update() {
+  update(k) {
     if (performance.now() > this.nextTargetAt) this.pickTarget();
     const dx = this.target.x - this.x;
     const dy = this.target.y - this.y;
     const dist = Math.hypot(dx, dy) || 1;
     if (dist < 45) this.pickTarget();
 
-    this.vx += (dx / dist) * 0.006;
-    this.vy += (dy / dist) * 0.006;
-    this.wobble += 0.01;
-    this.vy += Math.sin(this.wobble) * 0.004;
-    this.vx *= 0.98;
-    this.vy *= 0.98;
+    this.vx += (dx / dist) * 0.006 * k;
+    this.vy += (dy / dist) * 0.006 * k;
+    this.wobble += 0.01 * k;
+    this.vy += Math.sin(this.wobble) * 0.004 * k;
+    const damp = Math.pow(0.98, k);
+    this.vx *= damp;
+    this.vy *= damp;
 
     const sp = Math.hypot(this.vx, this.vy);
     const max = 0.42;
@@ -142,8 +189,8 @@ class Angler {
       this.vy = (this.vy / sp) * max;
     }
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * k;
+    this.y += this.vy * k;
 
     if (this.vx > 0.03) this.facing = -1;
     else if (this.vx < -0.03) this.facing = 1;
@@ -152,10 +199,9 @@ class Angler {
   }
 
   render() {
-    const w = this.el.offsetWidth;
-    const h = this.el.offsetHeight;
+    cachedSize(this);
     const tilt = clamp(this.vy * 5, -8, 8) * -this.facing;
-    this.el.style.transform = `translate(${this.x - w / 2}px, ${this.y - h / 2}px) rotate(${tilt}deg)`;
+    this.el.style.transform = `translate(${this.x - this._w / 2}px, ${this.y - this._h / 2}px) rotate(${tilt}deg)`;
     this.body.style.setProperty('--flip', this.facing);
   }
 }
@@ -177,33 +223,33 @@ class Octopus {
   jet() {
     // aim at a fresh point, biased inward so it doesn't hug the edges
     const mx = 110;
-    const my = 90;
     const tx = rand(mx, bounds.width - mx);
     const ty = rand(bounds.height * 0.18, bounds.height * 0.82);
     const dx = tx - this.x;
     const dy = ty - this.y;
     const d = Math.hypot(dx, dy) || 1;
-    const power = rand(4.5, 6.5);
+    const power = REDUCED ? rand(1.2, 1.8) : rand(4.5, 6.5);
     this.vx += (dx / d) * power;
     this.vy += (dy / d) * power;
     this.nextJetAt = performance.now() + rand(1700, 3800);
 
     // fire the streamline squash animation (retrigger by reflow)
-    if (this.body) {
+    if (this.body && !REDUCED) {
       this.body.classList.remove('jet');
       void this.body.offsetWidth;
       this.body.classList.add('jet');
     }
   }
 
-  update() {
+  update(k) {
     if (performance.now() > this.nextJetAt) this.jet();
 
     // glide: firm drag so each burst darts, then coasts to a rest before the next jet
-    this.vx *= 0.94;
-    this.vy *= 0.94;
-    this.x += this.vx;
-    this.y += this.vy;
+    const damp = Math.pow(0.94, k);
+    this.vx *= damp;
+    this.vy *= damp;
+    this.x += this.vx * k;
+    this.y += this.vy * k;
 
     // soft walls: bounce gently off the edges
     const m = 30;
@@ -216,17 +262,16 @@ class Octopus {
     const sp = Math.hypot(this.vx, this.vy);
     let desired = 0;
     if (sp > 0.35) desired = (Math.atan2(this.vy, this.vx) * 180) / Math.PI + 90;
-    let diff = ((desired - this.angle + 540) % 360) - 180;
-    this.angle += diff * 0.12;
+    const diff = ((desired - this.angle + 540) % 360) - 180;
+    this.angle += diff * (1 - Math.pow(1 - 0.12, k));
 
     this.render();
   }
 
   render() {
-    const w = this.el.offsetWidth;
-    const h = this.el.offsetHeight;
+    cachedSize(this);
     this.el.style.transform =
-      `translate(${(this.x - w / 2).toFixed(1)}px, ${(this.y - h / 2).toFixed(1)}px) rotate(${this.angle.toFixed(1)}deg)`;
+      `translate(${(this.x - this._w / 2).toFixed(1)}px, ${(this.y - this._h / 2).toFixed(1)}px) rotate(${this.angle.toFixed(1)}deg)`;
   }
 }
 
@@ -308,6 +353,7 @@ class Jellyfish {
     this.el = el;
     this.name = name;
     this.glowColor = glowColor;
+    this.partner = null;
     this.x = x;
     this.y = y;
     this.vx = 0;
@@ -341,8 +387,9 @@ class Jellyfish {
 
   emitBubble() {
     if (!trails) return;
-    const w = this.el.offsetWidth;
-    const h = this.el.offsetHeight;
+    cachedSize(this);
+    const w = this._w;
+    const h = this._h;
     const b = document.createElement('div');
     b.className = 'bubble';
     const size = rand(4, 9);
@@ -379,7 +426,9 @@ class Jellyfish {
     const tentacles = document.createElement('div');
     tentacles.className = 'tentacles';
 
-    const w = this.el.getBoundingClientRect().width || 110;
+    // tentacles are built in pixels, so remember the width they were built for
+    const w = this.el.offsetWidth || 110;
+    this.builtW = w;
     const bellH = w * 0.66;
 
     // thin outer tentacles emerging from around the bell rim
@@ -423,14 +472,34 @@ class Jellyfish {
     this.el.appendChild(head);
   }
 
+  // after a resize/rotation the bell rescales via CSS but the pixel-built
+  // tentacles don't, so rebuild them for the new width
+  rebuild() {
+    if (this.el.offsetWidth === this.builtW) return;
+    this.el.textContent = '';
+    this.buildDOM();
+    this._epoch = -1;
+    this.render();
+  }
+
   pickNewTarget() {
     const margin = 60;
+    // now and then, drift toward the other one — close enough for a shy notice,
+    // not close enough to merge
+    if (this.partner && Math.random() < 0.3) {
+      const ang = rand(0, Math.PI * 2);
+      const r = rand(100, 140);
+      this.target.x = clamp(this.partner.x + Math.cos(ang) * r, margin, bounds.width - margin);
+      this.target.y = clamp(this.partner.y + Math.sin(ang) * r, margin, bounds.height - margin);
+      this.nextTargetAt = performance.now() + rand(4000, 8000);
+      return;
+    }
     this.target.x = rand(margin, bounds.width - margin);
     this.target.y = rand(margin, bounds.height - margin);
     this.nextTargetAt = performance.now() + rand(4000, 8000);
   }
 
-  update() {
+  update(k) {
     if (!this.dragging && !this.locked) {
       if (this.target.x == null || performance.now() > this.nextTargetAt) {
         this.pickNewTarget();
@@ -440,35 +509,35 @@ class Jellyfish {
       const dist = Math.hypot(dx, dy) || 1;
       if (dist < 24) this.pickNewTarget();
 
-      this.vx += (dx / dist) * 0.03;
-      this.vy += (dy / dist) * 0.03;
+      this.vx += (dx / dist) * 0.03 * k;
+      this.vy += (dy / dist) * 0.03 * k;
 
-      this.wobble += 0.02;
-      this.vx += Math.cos(this.wobble) * 0.015;
-      this.vy += Math.sin(this.wobble * 1.3) * 0.012;
+      this.wobble += 0.02 * k;
+      this.vx += Math.cos(this.wobble) * 0.015 * k;
+      this.vy += Math.sin(this.wobble * 1.3) * 0.012 * k;
 
-      this.vx *= 0.96;
-      this.vy *= 0.96;
+      const damp = Math.pow(0.96, k);
+      this.vx *= damp;
+      this.vy *= damp;
 
       const speed = Math.hypot(this.vx, this.vy);
-      const maxSpeed = 0.9;
+      const maxSpeed = REDUCED ? 0.45 : 0.9;
       if (speed > maxSpeed) {
         this.vx = (this.vx / speed) * maxSpeed;
         this.vy = (this.vy / speed) * maxSpeed;
       }
 
-      this.x = clamp(this.x + this.vx, 40, bounds.width - 40);
-      this.y = clamp(this.y + this.vy, 40, bounds.height - 40);
+      this.x = clamp(this.x + this.vx * k, 40, bounds.width - 40);
+      this.y = clamp(this.y + this.vy * k, 40, bounds.height - 40);
     }
     this.render();
     this.maybeEmitBubble();
   }
 
   render() {
-    const w = this.el.offsetWidth;
-    const h = this.el.offsetHeight;
+    cachedSize(this);
     const tilt = clamp(this.vx * 8, -16, 16);
-    this.el.style.transform = `translate(${this.x - w / 2}px, ${this.y - h / 2}px) rotate(${tilt}deg)`;
+    this.el.style.transform = `translate(${this.x - this._w / 2}px, ${this.y - this._h / 2}px) rotate(${tilt}deg)`;
   }
 }
 
@@ -500,29 +569,42 @@ function hideHint() {
 function setupDrag(jelly) {
   let startX = 0;
   let startY = 0;
+  let offX = 0;
+  let offY = 0;
   let moved = false;
+  let activeId = null; // the one pointer that owns this drag (ignores 2nd fingers)
 
   jelly.el.addEventListener('pointerdown', (e) => {
+    if (activeId !== null || e.button > 0) return;
+    activeId = e.pointerId;
     jelly.dragging = true;
     jelly.el.classList.add('dragging');
     jelly.el.setPointerCapture(e.pointerId);
     startX = e.clientX;
     startY = e.clientY;
     moved = false;
+    // keep the grab point under the finger instead of snapping the centre to it
+    const r = ocean.getBoundingClientRect();
+    offX = jelly.x - (e.clientX - r.left);
+    offY = jelly.y - (e.clientY - r.top);
   });
 
   jelly.el.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== activeId) return;
     if (!jelly.dragging || jelly.locked) return;
-    const rect = ocean.getBoundingClientRect();
-    jelly.x = clamp(e.clientX - rect.left, 20, bounds.width - 20);
-    jelly.y = clamp(e.clientY - rect.top, 20, bounds.height - 20);
-    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 4) {
+    if (!moved) {
+      if (Math.hypot(e.clientX - startX, e.clientY - startY) <= 4) return; // still a tap
       moved = true;
       hideHint();
     }
+    const rect = ocean.getBoundingClientRect();
+    jelly.x = clamp(e.clientX - rect.left + offX, 40, bounds.width - 40);
+    jelly.y = clamp(e.clientY - rect.top + offY, 40, bounds.height - 40);
   });
 
   const endDrag = (e) => {
+    if (e.pointerId !== activeId) return;
+    activeId = null;
     if (!jelly.dragging) return;
     jelly.dragging = false;
     jelly.el.classList.remove('dragging');
@@ -538,10 +620,15 @@ function setupDrag(jelly) {
 
 let uniting = false;
 let unionCooldownUntil = 0;
+let lastUnionAt = 0;
 
 function checkUnion(a, b) {
   if (uniting || a.locked || b.locked) return;
-  if (performance.now() < unionCooldownUntil) return;
+  const now = performance.now();
+  if (now < unionCooldownUntil) return;
+  // keep the heart moment special: when nobody is dragging them, they can only
+  // merge on their own once every 40s (drifting close otherwise = a shy notice)
+  if (!a.dragging && !b.dragging && now - lastUnionAt < 40000) return;
   const dist = Math.hypot(a.x - b.x, a.y - b.y);
   if (dist < 65) {
     triggerUnion(a, b);
@@ -566,31 +653,38 @@ async function triggerUnion(a, b) {
 
   await wait(350);
 
-  heartEl.style.left = `${midX}px`;
-  heartEl.style.top = `${midY}px`;
+  // keep the heart + message fully on screen even when they meet near an edge
+  const half = Math.min(bounds.width * 0.3, 140) + 10;
+  const hx = clamp(midX, half, bounds.width - half);
+  const hy = clamp(midY, 120, bounds.height - 90);
+  heartEl.style.left = `${hx}px`;
+  heartEl.style.top = `${hy}px`;
+  heartMsgEl.textContent = nextMessage();
   heartEl.classList.add('show');
-  spawnBurst(midX, midY, '#f9a8d4', 10, 60, 5, 900);
-  spawnBurst(midX, midY, '#7dd3fc', 10, 60, 5, 900);
+  spawnBurst(hx, hy, '#f9a8d4', 10, 60, 5, 900);
+  spawnBurst(hx, hy, '#7dd3fc', 10, 60, 5, 900);
 
-  await wait(3400);
+  await wait(5500); // long enough to actually read the message
 
   heartEl.classList.remove('show');
   await wait(400);
 
-  a.x -= 40;
-  b.x += 40;
-  a.render();
-  b.render();
+  // fade back in while gliding apart, instead of reappearing pre-shifted
+  a.el.style.transition = 'opacity 0.9s ease';
+  b.el.style.transition = 'opacity 0.9s ease';
   a.el.style.opacity = '1';
   b.el.style.opacity = '1';
-
-  await wait(500);
+  await Promise.all([
+    tweenTo(a, clamp(a.x - 50, 40, bounds.width - 40), a.y, 900),
+    tweenTo(b, clamp(b.x + 50, 40, bounds.width - 40), b.y, 900),
+  ]);
 
   a.locked = false;
   b.locked = false;
   a.pickNewTarget();
   b.pickNewTarget();
-  unionCooldownUntil = performance.now() + 3000;
+  unionCooldownUntil = performance.now() + 8000;
+  lastUnionAt = performance.now();
   uniting = false;
 }
 
@@ -616,30 +710,31 @@ function createMotes(n) {
   }
 }
 
-function updateMotes() {
+function updateMotes(k) {
+  const damp = Math.pow(0.95, k);
   for (const m of motes) {
-    m.vx += rand(-0.012, 0.012);
-    m.vy += rand(-0.012, 0.012);
+    m.vx += rand(-0.012, 0.012) * k;
+    m.vy += rand(-0.012, 0.012) * k;
     if (pointer.active) {
       const dx = pointer.x - m.x;
       const dy = pointer.y - m.y;
       const d = Math.hypot(dx, dy);
       if (d < 210 && d > 1) {
-        const pull = 0.05 * (1 - d / 210);
+        const pull = 0.05 * (1 - d / 210) * k;
         m.vx += (dx / d) * pull;
         m.vy += (dy / d) * pull;
       }
     }
-    m.vx *= 0.95;
-    m.vy *= 0.95;
+    m.vx *= damp;
+    m.vy *= damp;
     const sp = Math.hypot(m.vx, m.vy);
     const max = 1.3;
     if (sp > max) {
       m.vx = (m.vx / sp) * max;
       m.vy = (m.vy / sp) * max;
     }
-    m.x += m.vx;
-    m.y += m.vy;
+    m.x += m.vx * k;
+    m.y += m.vy * k;
     if (m.x < -12) m.x = bounds.width + 12;
     else if (m.x > bounds.width + 12) m.x = -12;
     if (m.y < -12) m.y = bounds.height + 12;
@@ -678,15 +773,70 @@ function checkNotice(a, b) {
   }
 }
 
+// Whole calendar days since TOGETHER_SINCE, counted in UTC so a daylight-saving
+// change never makes it off by one.
+function daysSince(since) {
+  const startUTC = Date.UTC(since.getFullYear(), since.getMonth(), since.getDate());
+  const n = new Date();
+  const todayUTC = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate());
+  return Math.max(0, Math.round((todayUTC - startUTC) / 86400000));
+}
+
 function initDays() {
   const el = document.getElementById('daysCount');
   if (!el) return;
-  const days = Math.max(0, Math.floor((Date.now() - TOGETHER_SINCE.getTime()) / 86400000));
-  el.textContent = days.toLocaleString();
+  daysTogether = daysSince(TOGETHER_SINCE);
+  const days = daysTogether;
+
+  if (REDUCED) {
+    el.textContent = days.toLocaleString();
+  } else {
+    // count up once the title has faded in
+    el.textContent = '0';
+    setTimeout(() => {
+      const t0 = performance.now();
+      const dur = 1600;
+      (function tick() {
+        const k = Math.min(1, (performance.now() - t0) / dur);
+        el.textContent = Math.round(days * (1 - Math.pow(1 - k, 3))).toLocaleString();
+        if (k < 1) requestAnimationFrame(tick);
+      })();
+    }, 1500);
+  }
+
+  // keep it right if the page stays open past midnight
+  setInterval(() => {
+    const d = daysSince(TOGETHER_SINCE);
+    if (d !== daysTogether) {
+      daysTogether = d;
+      el.textContent = d.toLocaleString();
+    }
+  }, 60000);
+
+  // little celebration line on monthiversaries and every 100 days
+  const s = TOGETHER_SINCE;
+  const now = new Date();
+  let note = null;
+  if (days > 0 && days % 100 === 0) {
+    note = `${days.toLocaleString()} days today ✨`;
+  } else if (now.getDate() === s.getDate()) {
+    const months = (now.getFullYear() - s.getFullYear()) * 12 + now.getMonth() - s.getMonth();
+    if (months > 0 && months % 12 === 0) {
+      const years = months / 12;
+      note = `happy ${years} year${years > 1 ? 's' : ''} 💗`;
+    } else if (months > 0) {
+      note = `happy ${months} month${months > 1 ? 's' : ''} 💗`;
+    }
+  }
+  if (note) {
+    const p = document.createElement('p');
+    p.className = 'days milestone';
+    p.textContent = note;
+    el.closest('.title').appendChild(p);
+  }
 }
 
 // --- background music: a local audio file (works offline & on GitHub Pages) ---
-// Drop a track you're allowed to redistribute at this path (see assets/README.md).
 const MUSIC_SRC = 'assets/music.mp3';
 const MUSIC_VOLUME = 0.55; // 0..1
 
@@ -694,6 +844,7 @@ const Music = (() => {
   let audio = null;
   let want = false;
   let fadeTimer = null;
+  let onChange = () => {};
 
   function ensure() {
     if (audio) return;
@@ -701,6 +852,9 @@ const Music = (() => {
     audio.loop = true;
     audio.preload = 'auto';
     audio.volume = 0;
+    // keep the button honest if the browser/OS pauses or resumes playback
+    audio.addEventListener('play', () => { want = true; onChange(true); });
+    audio.addEventListener('pause', () => { want = false; onChange(false); });
   }
 
   function fadeTo(target, ms) {
@@ -723,7 +877,7 @@ const Music = (() => {
     want = !want;
     if (want) {
       const p = audio.play();
-      if (p && p.catch) p.catch(() => {}); // ignore autoplay/load rejections
+      if (p && p.catch) p.catch(() => { want = false; onChange(false); });
       fadeTo(MUSIC_VOLUME, 1400);
     } else {
       fadeTo(0, 700);
@@ -731,15 +885,19 @@ const Music = (() => {
     return want;
   }
 
-  return { toggle };
+  return {
+    toggle,
+    isOn: () => want,
+    setListener(fn) { onChange = fn; },
+  };
 })();
 
 function init() {
-  createParticles(50);
+  createParticles(REDUCED ? 15 : 50);
   createGlowBlobs(5);
   createBgJellies(5);
   createCreatures(4);
-  createMotes(16);
+  createMotes(REDUCED ? 0 : 16);
   initDays();
   trails = document.getElementById('trails');
   const cursorGlow = document.getElementById('cursorGlow');
@@ -755,15 +913,31 @@ function init() {
   });
 
   ocean.addEventListener('pointerdown', (e) => {
+    pointer.lastMove = performance.now(); // touch taps count as activity too
     if (e.target.closest('.jelly') || e.target.closest('.sound-toggle')) return;
     spawnPopHeart(e.clientX, e.clientY);
-    hideHint();
   });
 
+  // music button reflects the real playback state
+  const setBtn = (on) => {
+    soundToggle.classList.toggle('on', on);
+    soundToggle.setAttribute('aria-pressed', String(on));
+    soundToggle.firstElementChild.textContent = on ? '🔊' : '🔇';
+  };
+  Music.setListener(setBtn);
+
+  // the music starts with the first touch anywhere (browsers need a gesture);
+  // after that, or once the button has been used, only the button controls it
+  let musicStarted = false;
+  ocean.addEventListener('pointerdown', (e) => {
+    if (musicStarted || e.target.closest('.sound-toggle')) return;
+    musicStarted = true;
+    if (!Music.isOn()) setBtn(Music.toggle());
+  }, { capture: true });
+
   soundToggle.addEventListener('click', () => {
-    const isOn = Music.toggle();
-    soundToggle.classList.toggle('on', isOn);
-    soundToggle.textContent = isOn ? '🔊' : '🔇';
+    musicStarted = true;
+    setBtn(Music.toggle());
   });
 
   const angler = new Angler(document.getElementById('anglerFish'));
@@ -771,24 +945,55 @@ function init() {
 
   const eva = new Jellyfish(document.getElementById('jelly-eva'), 'Eva', '#f9a8d4', bounds.width * 0.35, bounds.height * 0.5);
   const ted = new Jellyfish(document.getElementById('jelly-ted'), 'Ted', '#7dd3fc', bounds.width * 0.65, bounds.height * 0.45);
+  eva.partner = ted;
+  ted.partner = eva;
   eva.pickNewTarget();
   ted.pickNewTarget();
 
   setupDrag(eva);
   setupDrag(ted);
 
+  // resize/rotation: (updateBounds was registered first, so bounds are fresh here)
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    angler.x = clamp(angler.x, 0, bounds.width);
+    angler.y = clamp(angler.y, 0, bounds.height);
+    angler.pickTarget();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      eva.rebuild();
+      ted.rebuild();
+    }, 200);
+  });
+
   setTimeout(hideHint, 15000);
 
-  function loop() {
-    if (pointer.active && performance.now() - pointer.lastMove > 1600) {
+  let last = 0;
+  function loop(now) {
+    // k = frames elapsed at 60fps (capped so a backgrounded tab doesn't jump)
+    const k = last ? Math.min((now - last) / 16.667, 3) : 1;
+    last = now;
+
+    if (pointer.active && now - pointer.lastMove > 1600) {
       pointer.active = false;
       cursorGlow.classList.remove('active');
     }
-    updateMotes();
-    angler.update();
-    octopus.update();
-    eva.update();
-    ted.update();
+
+    // left alone for a while, Eva & Ted slowly find their way to each other
+    if (!uniting && !eva.dragging && !ted.dragging &&
+        now - pointer.lastMove > 25000 && now - lastUnionAt > 40000) {
+      const mx = (eva.x + ted.x) / 2;
+      const my = (eva.y + ted.y) / 2;
+      eva.target.x = ted.target.x = mx;
+      eva.target.y = ted.target.y = my;
+      eva.nextTargetAt = ted.nextTargetAt = now + 1000;
+    }
+
+    updateMotes(k);
+    angler.update(k);
+    octopus.update(k);
+    eva.update(k);
+    ted.update(k);
     checkUnion(eva, ted);
     checkNotice(eva, ted);
     requestAnimationFrame(loop);
