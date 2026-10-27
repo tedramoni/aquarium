@@ -157,6 +157,7 @@ class Angler {
     this.nextTargetAt = 0;
     this.target = { x: this.x, y: this.y };
     this.facing = 1; // SVG is drawn facing left; 1 = left, -1 = right
+    this.holdUntil = 0; // freezes in place (startled) while Lilly paws at its light
     this.pickTarget();
   }
 
@@ -178,7 +179,7 @@ class Angler {
     this.vy += (dy / dist) * 0.006 * k;
     this.wobble += 0.01 * k;
     this.vy += Math.sin(this.wobble) * 0.004 * k;
-    const damp = Math.pow(0.98, k);
+    const damp = Math.pow(performance.now() < this.holdUntil ? 0.8 : 0.98, k);
     this.vx *= damp;
     this.vy *= damp;
 
@@ -192,8 +193,10 @@ class Angler {
     this.x += this.vx * k;
     this.y += this.vy * k;
 
-    if (this.vx > 0.03) this.facing = -1;
-    else if (this.vx < -0.03) this.facing = 1;
+    if (performance.now() >= this.holdUntil) {
+      if (this.vx > 0.03) this.facing = -1;
+      else if (this.vx < -0.03) this.facing = 1;
+    }
 
     this.render();
   }
@@ -892,6 +895,139 @@ const Music = (() => {
   };
 })();
 
+// --- easter egg: tap the anglerfish's light and Lilly (tuxedo cat, yellow
+// eyes, tiny diving helmet) floats in to investigate, bats at it, then drifts
+// away upside down. ---
+function setupLilly(angler) {
+  const el = document.getElementById('lilly');
+  const flipEl = el.querySelector('.lilly-flip');
+  const pupils = el.querySelector('.li-pupils');
+  const toast = document.getElementById('lillyToast');
+  const lureEl = angler.el.querySelector('.af-lure');
+  const hit = angler.el.querySelector('.af-hit');
+  let running = false;
+
+  const lurePos = () => {
+    const r = lureEl.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+
+  function say(text, x, y) {
+    const s = document.createElement('div');
+    s.className = 'lilly-say';
+    s.textContent = text;
+    s.style.left = `${x}px`;
+    s.style.top = `${y}px`;
+    ocean.appendChild(s);
+    s.addEventListener('animationend', () => s.remove());
+  }
+
+  // run fn(t) for t: 0..1 over `ms`, one call per animation frame
+  function play(ms, fn) {
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      (function step() {
+        const t = Math.min(1, (performance.now() - t0) / ms);
+        fn(t);
+        if (t < 1) requestAnimationFrame(step);
+        else resolve();
+      })();
+    });
+  }
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+  async function run() {
+    running = true;
+    el.classList.add('on');
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+
+    // the anglerfish freezes like a deer in headlights while she comes over
+    angler.holdUntil = performance.now() + 4900;
+
+    // approach from the side the anglerfish is FACING (open water in front of
+    // its face where the lure dangles) — not from behind, which would put her
+    // on top of its body. facing 1 = facing left.
+    let L = lurePos();
+    const side = -angler.facing;                   // +1: Lilly ends up right of the light
+    const flip = -side;                            // her batting paw faces the light
+    let x = side === 1 ? bounds.width + w : -w;
+    let y = clamp(L.y + h * 0.9, h / 2, bounds.height - h / 2);
+    let rot = 0;
+    const sx = x;
+    const sy = y;
+
+    const render = () => {
+      el.style.transform = `translate(${x - w / 2}px, ${y - h / 2}px) rotate(${rot}deg)`;
+      flipEl.style.transform = `scaleX(${flip})`;
+    };
+    // pupils stare at the light (x offset mirrored along with the drawing)
+    const stare = () => {
+      const dx = L.x - x;
+      const dy = L.y - (y - h * 0.15);
+      const d = Math.hypot(dx, dy) || 1;
+      pupils.setAttribute('transform', `translate(${((dx / d) * 2 * flip).toFixed(2)} ${((dy / d) * 2).toFixed(2)})`);
+    };
+    const targetX = () => clamp(L.x + side * w * 0.75, w / 2, bounds.width - w / 2);
+    const targetY = () => clamp(L.y + h * 0.35, h / 2, bounds.height - h / 2);
+
+    // 1) float in, eyes locked on the light
+    let saidHuh = false;
+    await play(3000, (t) => {
+      L = lurePos();
+      const e = ease(t);
+      x = sx + (targetX() - sx) * e;
+      y = sy + (targetY() - sy) * e;
+      if (!saidHuh && t > 0.45) { saidHuh = true; say('mrrp?', x, y - h * 0.55); }
+      stare();
+      render();
+    });
+
+    // 2) its light flickers nervously while Lilly bats at it 3 times
+    angler.el.classList.add('teasing');
+    el.classList.add('batting');
+    say('!', x, y - h * 0.55);
+    [220, 770, 1320].forEach((ms) => setTimeout(() => {
+      const p = lurePos();
+      spawnBurst(p.x, p.y, '#bff3ff', 6, 24, 4, 500);
+    }, ms));
+    await play(1700, () => {
+      L = lurePos();
+      x += (targetX() - x) * 0.08;
+      y += (targetY() - y) * 0.08;
+      stare();
+      render();
+    });
+    el.classList.remove('batting');
+    angler.el.classList.remove('teasing');
+
+    // 3) she slowly flips upside down and drifts off, satisfied
+    pupils.setAttribute('transform', 'translate(0 -1.5)');
+    const dx0 = x;
+    const dy0 = y;
+    let saidMrrp = false;
+    await play(4400, (t) => {
+      rot = 180 * ease(Math.min(1, t * 1.7)) * side;
+      x = dx0 + side * 190 * t;
+      y = dy0 - 240 * t + Math.sin(t * Math.PI * 2) * 10;
+      if (!saidMrrp && t > 0.3) { saidMrrp = true; say('mrrp', x, y - h * 0.6); }
+      if (t > 0.72) el.classList.remove('on');
+      render();
+    });
+
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3400);
+    rot = 0;
+    pupils.removeAttribute('transform');
+    running = false;
+  }
+
+  hit.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (!running) run();
+  });
+}
+
 function init() {
   createParticles(REDUCED ? 15 : 50);
   createGlowBlobs(5);
@@ -914,7 +1050,7 @@ function init() {
 
   ocean.addEventListener('pointerdown', (e) => {
     pointer.lastMove = performance.now(); // touch taps count as activity too
-    if (e.target.closest('.jelly') || e.target.closest('.sound-toggle')) return;
+    if (e.target.closest('.jelly') || e.target.closest('.sound-toggle') || e.target.closest('.af-hit')) return;
     spawnPopHeart(e.clientX, e.clientY);
   });
 
@@ -942,6 +1078,7 @@ function init() {
 
   const angler = new Angler(document.getElementById('anglerFish'));
   const octopus = new Octopus(document.getElementById('octopus'));
+  setupLilly(angler);
 
   const eva = new Jellyfish(document.getElementById('jelly-eva'), 'Eva', '#f9a8d4', bounds.width * 0.35, bounds.height * 0.5);
   const ted = new Jellyfish(document.getElementById('jelly-ted'), 'Ted', '#7dd3fc', bounds.width * 0.65, bounds.height * 0.45);

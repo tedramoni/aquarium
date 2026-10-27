@@ -51,6 +51,8 @@
         <path class="af-rod" d="M86,26 C76,4 46,-1 24,18 C21,25 21,34 25,42"/>
         <circle class="af-lure-glow" cx="25" cy="43" r="13"/>
         <circle class="af-lure" cx="25" cy="43" r="3.6"/>
+        <!-- invisible, generous tap target for the easter egg -->
+        <circle class="af-hit" cx="25" cy="43" r="18"/>
       </svg>
     </div>
   </div>
@@ -107,6 +109,57 @@
     <!-- edit this message any time -->
     <p class="heart-message">In the deepest dark, this is what still glows.</p>
   </div>
+
+  <!-- easter egg: tap the anglerfish's light and Lilly comes to investigate -->
+  <div class="lilly" id="lilly" aria-hidden="true">
+    <div class="lilly-flip">
+      <div class="lilly-bob">
+        <svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">
+          <!-- tail + body -->
+          <path class="li-black" d="M80,112 C101,110 109,91 100,79 C97,75 91,77 94,83 C100,93 94,104 80,104 Z"/>
+          <ellipse class="li-black" cx="60" cy="108" rx="25" ry="22"/>
+          <path class="li-white" d="M60,88 C50,94 48,110 52,124 L68,124 C72,110 70,94 60,88 Z"/>
+          <ellipse class="li-white" cx="47" cy="127" rx="7" ry="5"/>
+          <!-- ears + head -->
+          <path class="li-black" d="M40,42 L42,21 L56,32 Z"/>
+          <path class="li-pink" d="M43,37 L44.5,26 L52,32 Z"/>
+          <path class="li-black" d="M80,42 L78,21 L64,32 Z"/>
+          <path class="li-pink" d="M77,37 L75.5,26 L68,32 Z"/>
+          <circle class="li-black" cx="60" cy="52" r="23"/>
+          <!-- tuxedo blaze + muzzle -->
+          <path class="li-white" d="M60,40 C57,48 52,54 50,60 C49,68 54,73 60,73 C66,73 71,68 70,60 C68,54 63,48 60,40 Z"/>
+          <!-- yellow eyes; pupils are moved by JS to stare at the light -->
+          <ellipse class="li-eye" cx="50" cy="50" rx="5.4" ry="6"/>
+          <ellipse class="li-eye" cx="70" cy="50" rx="5.4" ry="6"/>
+          <g class="li-pupils">
+            <ellipse class="li-pupil" cx="50" cy="50" rx="1.8" ry="4.4"/>
+            <ellipse class="li-pupil" cx="70" cy="50" rx="1.8" ry="4.4"/>
+            <circle class="li-glint" cx="51.6" cy="47.4" r="1.1"/>
+            <circle class="li-glint" cx="71.6" cy="47.4" r="1.1"/>
+          </g>
+          <path class="li-pink" d="M57,59 L63,59 L60,62.6 Z"/>
+          <path class="li-line" d="M60,62.6 C59,65 56,65.6 55,64 M60,62.6 C61,65 64,65.6 65,64"/>
+          <path class="li-whisker" d="M52,63 L35,60 M52,65.5 L35,67 M68,63 L85,60 M68,65.5 L85,67"/>
+          <!-- glass diving helmet on a brass collar -->
+          <circle class="li-glass" cx="60" cy="49" r="36"/>
+          <path class="li-shine" d="M36,36 C40,26 48,19 58,17"/>
+          <circle class="li-shine-dot" cx="33" cy="45" r="1.6"/>
+          <ellipse class="li-collar" cx="60" cy="85" rx="25" ry="6.5"/>
+          <circle class="li-rivet" cx="40" cy="85" r="1.3"/>
+          <circle class="li-rivet" cx="50" cy="87.5" r="1.3"/>
+          <circle class="li-rivet" cx="60" cy="88.5" r="1.3"/>
+          <circle class="li-rivet" cx="70" cy="87.5" r="1.3"/>
+          <circle class="li-rivet" cx="80" cy="85" r="1.3"/>
+          <!-- the batting paw -->
+          <g class="li-arm">
+            <path class="li-black" d="M70,96 C80,104 82,116 78,124 L70,124 C72,116 70,106 66,100 Z"/>
+            <ellipse class="li-white" cx="74" cy="126" rx="7" ry="5"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <p class="lilly-toast" id="lillyToast" aria-live="polite">Lilly was here 🐾</p>
 
   <p class="hint" id="hint">✨ drag the jellyfish close together · tap the water for hearts</p>
 
