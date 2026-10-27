@@ -983,10 +983,10 @@ function setupLilly(angler) {
       render();
     });
 
-    // 2) its light flickers nervously while Lilly bats at it 3 times
+    // 2) its light flickers nervously while Lilly bats at it 3 times ("meow")
     angler.el.classList.add('teasing');
     el.classList.add('batting');
-    say('!', x, y - h * 0.55);
+    say('meow', x, y - h * 0.55);
     [220, 770, 1320].forEach((ms) => setTimeout(() => {
       const p = lurePos();
       spawnBurst(p.x, p.y, '#bff3ff', 6, 24, 4, 500);
